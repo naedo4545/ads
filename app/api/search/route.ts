@@ -72,8 +72,7 @@ async function performSearch(
       .from('ads')
       .select(`
         *,
-        advertiser:advertisers(*),
-        enrichment:ad_enrichments(*)
+        advertiser:advertisers(*)
       `);
 
     // 기본 필터 적용
@@ -93,10 +92,10 @@ async function performSearch(
       query = query.lte('first_seen', filters.date_to);
     }
 
-    // 카테고리 필터 (AI 분석 결과 기반)
-    if (filters.categories && filters.categories.length > 0) {
-      query = query.in('enrichment.categories', filters.categories);
-    }
+    // 카테고리 필터 (AI 분석 결과 기반) - 임시로 비활성화
+    // if (filters.categories && filters.categories.length > 0) {
+    //   query = query.in('enrichment.categories', filters.categories);
+    // }
 
     // 텍스트 검색 (Full-text search)
     if (filters.query) {
@@ -105,8 +104,7 @@ async function performSearch(
         .from('ads')
         .select(`
           *,
-          advertiser:advertisers(*),
-          enrichment:ad_enrichments(*)
+          advertiser:advertisers(*)
         `)
         .or(`title.ilike.%${filters.query}%,description.ilike.%${filters.query}%`);
 

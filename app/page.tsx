@@ -183,6 +183,9 @@ export default function HomePage() {
               <Link href="/collection" className="px-8 py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold hover:bg-white/20 transition-all duration-300">
                 내 컬렉션 보기
               </Link>
+              <Link href="/admin" className="px-6 py-3 rounded-xl bg-gray-800/80 backdrop-blur-sm border border-gray-700 text-white font-medium hover:bg-gray-800 transition-all duration-300">
+                광고 수집 관리
+              </Link>
             </div>
           </div>
         </div>

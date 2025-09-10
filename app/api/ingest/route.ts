@@ -1,116 +1,133 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { AdsTransparencyCrawler } from '@/crawler/playwright';
-import { ApiResponse, CrawlResult } from '@/types';
+import { createHash } from 'crypto';
 
-export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<CrawlResult>>> {
+// 광고 데이터 타입
+interface AdData {
+  title: string;
+  description?: string;
+  advertiser_name: string;
+  platform: string;
+  country: string;
+  media_url?: string;
+  media_type: 'video' | 'image';
+  first_seen: string;
+  status: 'active' | 'inactive' | 'removed';
+  detail_url?: string;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    // 요청 본문 파싱
-    const body = await request.json();
-    const { force = false, maxPages = 10 } = body;
-
-    // 환경 변수 검증
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const adData: AdData = await request.json();
+    
+    // 필수 필드 검증
+    if (!adData.title || !adData.advertiser_name) {
       return NextResponse.json(
-        { success: false, error: 'Missing environment variables' },
+        { error: 'Title and advertiser name are required' },
+        { status: 400 }
+      );
+    }
+
+    // 콘텐츠 해시 생성 (중복 방지)
+    const contentHash = createHash('sha256')
+      .update(`${adData.title}-${adData.advertiser_name}-${adData.media_url || ''}`)
+      .digest('hex');
+
+    // 중복 체크
+    const { data: existingAd } = await supabaseAdmin
+      .from('ads')
+      .select('id')
+      .eq('content_hash', contentHash)
+      .single();
+
+    if (existingAd) {
+      return NextResponse.json(
+        { message: 'Ad already exists', id: existingAd.id },
+        { status: 200 }
+      );
+    }
+
+    // 광고주 ID 생성 또는 조회
+    const advertiserId = await getOrCreateAdvertiser(
+      adData.advertiser_name,
+      adData.country,
+      adData.platform
+    );
+
+    // 광고 데이터 저장
+    const { data: newAd, error } = await supabaseAdmin
+      .from('ads')
+      .insert({
+        advertiser_id: advertiserId,
+        title: adData.title,
+        description: adData.description,
+        media_url: adData.media_url,
+        media_type: adData.media_type,
+        platform: adData.platform,
+        country: adData.country,
+        first_seen: adData.first_seen,
+        status: adData.status,
+        detail_url: adData.detail_url,
+        content_hash: contentHash,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to save ad' },
         { status: 500 }
       );
     }
 
-    console.log('🚀 Starting manual ingestion...');
-
-    // 크롤러 실행
-    const crawler = new AdsTransparencyCrawler();
-    const startTime = Date.now();
-
-    try {
-      // 크롤러 설정 업데이트
-      process.env.CRAWLER_MAX_PAGES = maxPages.toString();
-      
-      await crawler.start();
-      
-      const duration = Date.now() - startTime;
-      
-      // 결과 조회
-      const { count } = await supabaseAdmin
-        .from('ads')
-        .select('*', { count: 'exact', head: true });
-
-      const result: CrawlResult = {
-        success: true,
-        ads_count: count || 0,
-        duration_ms: duration,
-      };
-
-      console.log(`✅ Ingestion completed: ${result.ads_count} ads processed in ${duration}ms`);
-
-      return NextResponse.json({
-        success: true,
-        data: result,
-        message: 'Ingestion completed successfully',
-      });
-
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      console.error('❌ Ingestion failed:', error);
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error occurred',
-          data: {
-            success: false,
-            ads_count: 0,
-            duration_ms: duration,
-            errors: [error instanceof Error ? error.message : 'Unknown error'],
-          } as CrawlResult,
-        },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json(
+      { message: 'Ad saved successfully', id: newAd.id },
+      { status: 201 }
+    );
 
   } catch (error) {
-    console.error('❌ Invalid request:', error);
+    console.error('Ingest error:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Invalid request body',
-      },
-      { status: 400 }
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
 }
 
-export async function GET(): Promise<NextResponse<ApiResponse<any>>> {
+async function getOrCreateAdvertiser(name: string, country: string, platform: string): Promise<string> {
   try {
-    // 현재 데이터베이스 상태 조회
-    const [adsCount, advertisersCount, enrichmentsCount] = await Promise.all([
-      supabaseAdmin.from('ads').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('advertisers').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('ad_enrichments').select('*', { count: 'exact', head: true }),
-    ]);
+    // 기존 광고주 조회
+    const { data: existingAdvertiser } = await supabaseAdmin
+      .from('advertisers')
+      .select('id')
+      .eq('name', name)
+      .eq('country', country)
+      .eq('platform', platform)
+      .single();
 
-    const stats = {
-      ads: adsCount.count || 0,
-      advertisers: advertisersCount.count || 0,
-      enrichments: enrichmentsCount.count || 0,
-      last_updated: new Date().toISOString(),
-    };
+    if (existingAdvertiser) {
+      return existingAdvertiser.id;
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: stats,
-      message: 'Database statistics retrieved successfully',
-    });
+    // 새 광고주 생성
+    const { data: newAdvertiser, error } = await supabaseAdmin
+      .from('advertisers')
+      .insert({
+        name,
+        country,
+        platform,
+      })
+      .select('id')
+      .single();
 
+    if (error || !newAdvertiser) {
+      throw new Error(`Failed to create advertiser: ${error?.message}`);
+    }
+
+    return newAdvertiser.id;
   } catch (error) {
-    console.error('❌ Failed to get statistics:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to retrieve statistics',
-      },
-      { status: 500 }
-    );
+    console.error('Failed to get or create advertiser:', error);
+    throw error;
   }
 }
