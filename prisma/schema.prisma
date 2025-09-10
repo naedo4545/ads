@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 광고주 테이블
+model Advertiser {
+  id        String   @id @default(cuid())
+  name      String
+  country   String
+  platform  String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // 관계
+  ads Ad[]
+
+  @@map("advertisers")
+  @@index([country, platform])
+}
+
+// 광고 테이블
+model Ad {
+  id            String   @id @default(cuid())
+  advertiser_id String
+  title         String
+  description   String?
+  media_url     String
+  media_type    String   // 'video' | 'image'
+  platform      String   // 'youtube' | 'google' | 'facebook' | 'instagram'
+  country       String
+  first_seen    DateTime
+  status        String   @default("active") // 'active' | 'inactive' | 'removed'
+  detail_url    String
+  content_hash  String   @unique // 중복 방지용 해시
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // 관계
+  advertiser Advertiser @relation(fields: [advertiser_id], references: [id])
+  enrichment AdEnrichment?
+  collections Collection[]
+
+  @@map("ads")
+  @@index([platform, country, status])
+  @@index([first_seen])
+  @@index([content_hash])
+}
+
+// 광고 AI 분석 결과 테이블
+model AdEnrichment {
+  id               String   @id @default(cuid())
+  ad_id            String   @unique
+  ocr_text         String?  // 이미지에서 추출된 텍스트
+  asr_text         String?  // 영상에서 추출된 텍스트
+  combined_text    String   // OCR + ASR 텍스트 결합
+  embedding        Float[]  // OpenAI/e5 임베딩 벡터 (1536차원)
+  categories       String[] // AI가 분류한 카테고리
+  keywords_ko      String[] // 한국어 키워드
+  keywords_en      String[] // 영어 키워드
+  confidence_score Float    // AI 분석 신뢰도 (0-1)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // 관계
+  ad Ad @relation(fields: [ad_id], references: [id])
+
+  @@map("ad_enrichments")
+  @@index([embedding], type: Vector(1536)) // pgvector 인덱스
+  @@index([categories])
+}
+
+// 컬렉션 테이블 (즐겨찾기)
+model Collection {
+  id          String   @id @default(cuid())
+  user_id     String?  // 로그인 사용자 ID (선택사항)
+  name        String
+  description String?
+  ad_ids      String[] // 광고 ID 배열
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // 관계
+  ads Ad[]
+
+  @@map("collections")
+  @@index([user_id])
+}
+
+// 사용자 테이블 (선택사항)
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // 관계
+  collections Collection[]
+
+  @@map("users")
+}
