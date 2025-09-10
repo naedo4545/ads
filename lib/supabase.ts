@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '@/types/database';
 
 // 환경 변수 검증 (임시 설정)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -12,7 +11,7 @@ if (process.env.NODE_ENV === 'development' && (!process.env.NEXT_PUBLIC_SUPABASE
 }
 
 // 클라이언트용 Supabase 인스턴스 (브라우저에서 사용)
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -21,7 +20,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 });
 
 // 서버용 Supabase 인스턴스 (서버 사이드에서만 사용)
-export const supabaseAdmin = createClient<Database>(
+export const supabaseAdmin = createClient(
   supabaseUrl,
   supabaseServiceKey || supabaseAnonKey,
   {

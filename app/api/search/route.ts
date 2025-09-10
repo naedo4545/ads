@@ -137,7 +137,7 @@ async function performSearch(
       const { data, count } = await query
         .order(sortOption.field, { ascending: sortOption.direction === 'asc' })
         .range((page - 1) * limit, page * limit - 1)
-        .select('*', { count: 'exact' });
+        .select('*');
 
       const results: SearchResult[] = (data || []).map(ad => ({
         ad,

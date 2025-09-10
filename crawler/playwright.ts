@@ -33,7 +33,9 @@ class AdsTransparencyCrawler {
       });
 
       const page = await this.browser.newPage();
-      await page.setUserAgent(this.config.userAgent);
+      await page.setExtraHTTPHeaders({
+        'User-Agent': this.config.userAgent
+      });
       
       // 기본 페이지 로드
       await page.goto(this.config.baseUrl, { waitUntil: 'networkidle' });
