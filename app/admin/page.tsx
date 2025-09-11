@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { BarChart3, Users, Eye, TrendingUp, Clock, Globe } from 'lucide-react';
 
 export default function AdminPage() {
   const [formData, setFormData] = useState({
@@ -19,7 +20,27 @@ export default function AdminPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/stats');
+      const result = await response.json();
+      if (result.success) {
+        setStats(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +92,108 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
+        {/* 통계 섹션 */}
+        {!loading && stats && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">시스템 현황</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">총 광고</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.total_ads}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Eye className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">광고주</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.total_advertisers}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">AI 분석 완료</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.analyzed_ads}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">분석률</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.analysis_rate}%</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-orange-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">최근 활동</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <span className="text-gray-600">지난 24시간</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{stats.recent_activity.last_24h}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <span className="text-gray-600">지난 7일</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{stats.recent_activity.last_7d}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                      <span className="text-gray-600">지난 30일</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{stats.recent_activity.last_30d}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-2xl shadow-soft p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">플랫폼 분포</h3>
+                <div className="space-y-3">
+                  {Object.entries(stats.platform_distribution).map(([platform, count]) => (
+                    <div key={platform} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-5 h-5 text-gray-400" />
+                        <span className="text-gray-600 capitalize">{platform}</span>
+                      </div>
+                      <span className="font-semibold text-gray-900">{count as number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 광고 추가 폼 */}
         <div className="bg-white rounded-3xl shadow-soft p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">

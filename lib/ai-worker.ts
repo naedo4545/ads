@@ -199,17 +199,28 @@ class AIWorker {
   private async performASR(videoUrl: string): Promise<string> {
     try {
       // Whisper를 사용한 음성 인식
-      // 실제 구현에서는 Whisper API 또는 서비스를 호출
       console.log(`🎥 Performing ASR on: ${videoUrl}`);
       
-      // 임시 구현: OpenAI Whisper API 사용
+      // 비디오 다운로드
+      const videoFile = await this.downloadVideo(videoUrl);
+      
+      // OpenAI Whisper API 사용
       const response = await this.openai.audio.transcriptions.create({
-        file: await this.downloadVideo(videoUrl),
+        file: videoFile,
         model: "whisper-1",
         language: "ko", // 한국어 우선
+        response_format: "text",
+        temperature: 0.0, // 일관성을 위해 낮은 온도 설정
       });
 
-      return response.text;
+      // 임시 파일 정리
+      try {
+        require('fs').unlinkSync(`/tmp/video_${Date.now()}.mp4`);
+      } catch (cleanupError) {
+        console.warn('⚠️ Failed to cleanup temp file:', cleanupError);
+      }
+
+      return response;
     } catch (error) {
       console.warn('⚠️ ASR failed, continuing without ASR text:', error);
       return '';
@@ -217,9 +228,30 @@ class AIWorker {
   }
 
   private async downloadVideo(videoUrl: string): Promise<File> {
-    // 실제 구현에서는 비디오 다운로드 로직 필요
-    // 여기서는 임시로 빈 파일 반환
-    throw new Error('Video download not implemented');
+    try {
+      console.log(`📥 Downloading video: ${videoUrl}`);
+      
+      // 비디오 다운로드
+      const response = await fetch(videoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.statusText}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      // 임시 파일로 저장
+      const tempPath = `/tmp/video_${Date.now()}.mp4`;
+      require('fs').writeFileSync(tempPath, buffer);
+      
+      // File 객체 생성 (OpenAI Whisper API용)
+      const file = new File([buffer], 'video.mp4', { type: 'video/mp4' });
+      
+      return file;
+    } catch (error) {
+      console.error('❌ Failed to download video:', error);
+      throw error;
+    }
   }
 
   private combineTexts(title: string, description: string, ocrText: string, asrText: string): string {

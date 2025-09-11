@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # 메인 애플리케이션
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - .env.local
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # 데이터베이스
+  db:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_DB: ads_transparency
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  # Redis (캐싱 및 작업 큐)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # 크롤러 스케줄러 (매일 실행)
+  crawler-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.crawler
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.local
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: >
+      sh -c "
+        while true; do
+          echo 'Starting scheduled crawl at $$(date)'
+          npm run crawl:facebook
+          echo 'Crawl completed at $$(date)'
+          sleep 86400
+        done
+      "
+    profiles:
+      - scheduler
+
+  # AI 워커 스케줄러 (매일 실행)
+  ai-worker-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-worker
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.local
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    command: >
+      sh -c "
+        while true; do
+          echo 'Starting scheduled AI analysis at $$(date)'
+          npm run analyze
+          echo 'AI analysis completed at $$(date)'
+          sleep 86400
+        done
+      "
+    profiles:
+      - scheduler
+
+  # 모니터링 (선택사항)
+  monitoring:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+  redis_data:

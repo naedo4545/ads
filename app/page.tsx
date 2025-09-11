@@ -183,18 +183,43 @@ export default function HomePage() {
               <Link href="/collection" className="px-8 py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold hover:bg-white/20 transition-all duration-300">
                 내 컬렉션 보기
               </Link>
-              <Link href="/admin" className="px-6 py-3 rounded-xl bg-gray-800/80 backdrop-blur-sm border border-gray-700 text-white font-medium hover:bg-gray-800 transition-all duration-300">
-                광고 수집 관리
-              </Link>
             </div>
           </div>
         </div>
         
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-white/50 rounded-full mt-2 animate-pulse"></div>
+      </div>
+
+      {/* 최신 광고 */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-2">최신 광고</h2>
+              <p className="text-lg text-gray-600">방금 수집된 최신 광고</p>
+            </div>
+            <Link href="/search?sort_field=created_at&sort_direction=desc" className="group flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors">
+              더 보기
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
+          <CardsGrid items={recentAds} getMediaIcon={getMediaIcon} formatDate={formatDate} />
+        </div>
+      </div>
+
+      {/* 인기 광고 */}
+      <div className="bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-2">인기 광고</h2>
+              <p className="text-lg text-gray-600">관련도 점수 기반으로 선별된 인기 광고</p>
+            </div>
+            <Link href="/search?sort_field=relevance&sort_direction=desc" className="group flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors">
+              더 보기
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          <CardsGrid items={popularAds} getMediaIcon={getMediaIcon} formatDate={formatDate} />
         </div>
       </div>
 
@@ -272,40 +297,6 @@ export default function HomePage() {
               <p className="text-gray-600 font-medium">분석 엔진</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* 인기 광고 */}
-      <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-2">인기 광고</h2>
-              <p className="text-lg text-gray-600">관련도 점수 기반으로 선별된 인기 광고</p>
-            </div>
-            <Link href="/search?sort_field=relevance&sort_direction=desc" className="group flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              더 보기
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          <CardsGrid items={popularAds} getMediaIcon={getMediaIcon} formatDate={formatDate} />
-        </div>
-      </div>
-
-      {/* 최신 광고 */}
-      <div className="bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-2">최신 광고</h2>
-              <p className="text-lg text-gray-600">방금 수집된 최신 광고</p>
-            </div>
-            <Link href="/search?sort_field=created_at&sort_direction=desc" className="group flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium transition-colors">
-              더 보기
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          <CardsGrid items={recentAds} getMediaIcon={getMediaIcon} formatDate={formatDate} />
         </div>
       </div>
     </div>

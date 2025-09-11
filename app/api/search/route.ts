@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { SearchFilters, SearchResult, Pagination, SortOption, ApiResponse } from '@/types';
 import OpenAI from 'openai';
 
@@ -68,7 +68,7 @@ async function performSearch(
   limit: number
 ): Promise<{ results: SearchResult[]; pagination: Pagination }> {
   try {
-    let query = supabaseAdmin
+    let query = supabase
       .from('ads')
       .select(`
         *,
@@ -100,7 +100,7 @@ async function performSearch(
     // 텍스트 검색 (Full-text search)
     if (filters.query) {
       // 키워드 검색
-      const keywordQuery = supabaseAdmin
+      const keywordQuery = supabase
         .from('ads')
         .select(`
           *,
@@ -135,7 +135,10 @@ async function performSearch(
       const { data, count } = await query
         .order(sortOption.field, { ascending: sortOption.direction === 'asc' })
         .range((page - 1) * limit, page * limit - 1)
-        .select('*');
+        .select(`
+          *,
+          advertiser:advertisers(*)
+        `, { count: 'exact' });
 
       const results: SearchResult[] = (data || []).map(ad => ({
         ad,
@@ -176,7 +179,7 @@ async function performVectorSearch(query: string, limit: number): Promise<Search
     const queryEmbedding = embedding.data[0].embedding;
 
     // pgvector를 사용한 벡터 검색
-    const { data: vectorResults } = await supabaseAdmin.rpc('match_ads', {
+    const { data: vectorResults } = await supabase.rpc('match_ads', {
       query_embedding: queryEmbedding,
       match_threshold: 0.7,
       match_count: limit,
@@ -302,7 +305,7 @@ async function getSearchSuggestions(query: string): Promise<string[]> {
     const suggestions: string[] = [];
 
     // 카테고리 제안
-    const { data: categories } = await supabaseAdmin
+    const { data: categories } = await supabase
       .from('ad_enrichments')
       .select('categories')
       .ilike('categories', `%${query}%`)
@@ -319,7 +322,7 @@ async function getSearchSuggestions(query: string): Promise<string[]> {
     }
 
     // 키워드 제안
-    const { data: keywords } = await supabaseAdmin
+    const { data: keywords } = await supabase
       .from('ad_enrichments')
       .select('keywords_ko, keywords_en')
       .or(`keywords_ko.cs.{${query}},keywords_en.cs.{${query}}`)
