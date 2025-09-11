@@ -1,9 +1,9 @@
 {
   "/not-found": "app/not-found.js",
-  "/page": "app/page.js",
   "/search/page": "app/search/page.js",
   "/detail/[id]/page": "app/detail/[id]/page.js",
   "/collection/page": "app/collection/page.js",
   "/admin/page": "app/admin/page.js",
+  "/page": "app/page.js",
   "/api/search/route": "app/api/search/route.js"
 }

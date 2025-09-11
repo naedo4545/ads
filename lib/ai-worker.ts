@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import OpenAI from 'openai';
 import { supabaseAdmin } from '@/lib/supabase';
 import { AdEnrichment, AIAnalysisResult } from '@/types';
@@ -14,6 +15,9 @@ class AIWorker {
   private isRunning: boolean = false;
 
   constructor() {
+    // Load environment variables explicitly
+    require('dotenv').config({ path: '.env.local' });
+    
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
       throw new Error('OPENAI_API_KEY environment variable is required');
