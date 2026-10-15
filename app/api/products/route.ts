@@ -30,8 +30,17 @@ export async function GET(request: NextRequest) {
             ? error.message
             : "상품 정보를 불러오지 못했습니다.",
         code: error instanceof PartnerError ? error.code : "upstream",
+        ...(error instanceof PartnerError && error.diagnostic
+          ? { diagnostic: error.diagnostic }
+          : {}),
       },
-      { status: 503, headers: { "Cache-Control": "no-store" } },
+      {
+        status:
+          error instanceof PartnerError && error.code === "rate_limit"
+            ? 429
+            : 503,
+        headers: { "Cache-Control": "no-store" },
+      },
     );
   }
 }

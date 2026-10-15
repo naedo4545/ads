@@ -4,6 +4,29 @@ import { categories, type Catalog, type Product } from "./catalog";
 
 const origin = "https://api-gateway.coupang.com";
 const base = "/v2/providers/affiliate_open_api/apis/openapi/v1";
+export type PartnerDiagnostic = {
+  stage:
+    | "recommendations"
+    | "category_recommendations"
+    | "product_search"
+    | "affiliate_links";
+  httpStatus: number;
+  providerCode?: string;
+  providerMessage?: string;
+};
+export function redactProviderMessage(message: string, secrets: string[]) {
+  let result = message;
+  for (const secret of secrets) {
+    if (secret) result = result.split(secret).join("[redacted]");
+  }
+  return result
+    .replace(
+      /(access[-_ ]?key|secret[-_ ]?key|signature|authorization)\s*[:=]\s*[^,\s]+/gi,
+      "$1=[redacted]",
+    )
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .slice(0, 240);
+}
 export class PartnerError extends Error {
   constructor(
     public code:
@@ -12,6 +35,7 @@ export class PartnerError extends Error {
       | "rate_limit"
       | "invalid_response",
     message: string,
+    public diagnostic?: PartnerDiagnostic,
   ) {
     super(message);
     this.name = "PartnerError";
@@ -102,39 +126,73 @@ async function call(
       "쿠팡 상품 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
     );
   }
-  if (response.status === 429)
+  let parsed: unknown;
+  try {
+    parsed = await response.json();
+  } catch {
+    parsed = null;
+  }
+  const envelope = z
+    .object({
+      rCode: z.union([z.string(), z.number()]).transform(String),
+      rMessage: z.string().optional(),
+      data: z.unknown().optional(),
+    })
+    .safeParse(parsed);
+  const diagnostic: PartnerDiagnostic = {
+    stage: path.includes("/bestcategories/")
+      ? "category_recommendations"
+      : path.endsWith("/products/search")
+        ? "product_search"
+        : path.endsWith("/deeplink")
+          ? "affiliate_links"
+          : "recommendations",
+    httpStatus: response.status,
+  };
+  if (envelope.success) {
+    diagnostic.providerCode = redactProviderMessage(envelope.data.rCode, [
+      access,
+      secret,
+    ]).slice(0, 32);
+    if (envelope.data.rMessage)
+      diagnostic.providerMessage = redactProviderMessage(
+        envelope.data.rMessage,
+        [access, secret],
+      );
+  }
+  const message = diagnostic.providerMessage || "";
+  if (
+    response.status === 429 ||
+    /rate.?limit|too many|호출.*(초과|제한)|한도.*초과/i.test(message)
+  )
     throw new PartnerError(
       "rate_limit",
-      "상품 조회 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+      "쿠팡 상품 조회 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.",
+      diagnostic,
     );
   if (response.status === 401 || response.status === 403)
     throw new PartnerError(
       "configuration",
       "쿠팡 파트너스 API 권한과 등록된 서버 IP를 확인해 주세요.",
+      diagnostic,
     );
   if (!response.ok)
-    throw new PartnerError("upstream", "쿠팡 상품 정보를 가져오지 못했습니다.");
-  let parsed: unknown;
-  try {
-    parsed = await response.json();
-  } catch {
     throw new PartnerError(
-      "invalid_response",
-      "상품 응답을 확인할 수 없습니다.",
+      "upstream",
+      "쿠팡 상품 서버가 요청을 처리하지 못했습니다.",
+      diagnostic,
     );
-  }
-  const envelope = z
-    .object({ rCode: z.string(), data: z.unknown().optional() })
-    .safeParse(parsed);
   if (!envelope.success)
     throw new PartnerError(
       "invalid_response",
       "상품 응답 형식이 올바르지 않습니다.",
+      diagnostic,
     );
   if (envelope.data.rCode !== "0")
     throw new PartnerError(
       "upstream",
-      "쿠팡 파트너스 요청이 처리되지 않았습니다. API 권한과 이용 한도를 확인해 주세요.",
+      "쿠팡 파트너스 요청이 거절됐습니다. 공급처 오류 내용을 확인해 주세요.",
+      diagnostic,
     );
   return envelope.data.data;
 }

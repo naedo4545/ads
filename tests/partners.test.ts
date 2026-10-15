@@ -306,3 +306,54 @@ test("Empty category recommendations fall back to real category search with part
   assert.equal(result.selection, "category_search");
   assert.equal(result.products[0].affiliateUrl, item.productUrl);
 });
+
+test("Provider refusal retains its stage and code while removing credentials from diagnostic text", async (t) => {
+  setup(
+    t,
+    async () =>
+      new Response(
+        JSON.stringify({
+          rCode: "ERR_CATEGORY",
+          rMessage:
+            "category not available test-access test-secret signature=privateSignature",
+        }),
+        { status: 200 },
+      ),
+  );
+  await assert.rejects(
+    () => fetchCatalog("", "beauty"),
+    (error: any) => {
+      assert.equal(error.code, "upstream");
+      assert.equal(error.diagnostic.stage, "category_recommendations");
+      assert.equal(error.diagnostic.providerCode, "ERR_CATEGORY");
+      assert.match(error.diagnostic.providerMessage, /category not available/);
+      const serialized = JSON.stringify(error);
+      for (const secret of ["test-access", "test-secret", "privateSignature"])
+        assert.equal(serialized.includes(secret), false);
+      return true;
+    },
+  );
+});
+test("Provider quota failures have an actionable error category and diagnostic context", async (t) => {
+  setup(
+    t,
+    async () =>
+      new Response(
+        JSON.stringify({ rCode: "LIMIT", rMessage: "API 호출 한도 초과" }),
+        { status: 200 },
+      ),
+  );
+  await assert.rejects(
+    () => fetchCatalog("", "beauty"),
+    (error: any) =>
+      error.code === "rate_limit" && error.diagnostic.providerCode === "LIMIT",
+  );
+});
+test("Numeric provider success codes are accepted", async (t) => {
+  setup(
+    t,
+    async () =>
+      new Response(JSON.stringify({ rCode: 0, data: [item] }), { status: 200 }),
+  );
+  assert.equal((await fetchCatalog()).products.length, 1);
+});
