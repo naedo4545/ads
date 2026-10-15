@@ -1041,7 +1041,8 @@ export default function Shop({
               {catalog?.selection === "category_search" && (
                 <p className="category-search-notice">
                   <Info size={16} />
-                  카테고리 추천 목록이 없어 해당 분야의 검색 상품을 보여드려요.
+                  카테고리 추천을 사용할 수 없어 해당 분야의 검색 상품을
+                  보여드려요.
                 </p>
               )}
               <div className="shop-results">

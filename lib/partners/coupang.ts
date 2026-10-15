@@ -275,7 +275,20 @@ export async function fetchCatalog(
     : categoryId
       ? "/products/bestcategories/" + categoryId
       : "/products/goldbox";
-  let raw = await call(base + endpoint, params);
+  let raw: unknown;
+  try {
+    raw = await call(base + endpoint, params);
+  } catch (error) {
+    const inactiveCategory =
+      !keyword &&
+      Boolean(categoryId) &&
+      error instanceof PartnerError &&
+      error.diagnostic?.stage === "category_recommendations" &&
+      error.diagnostic.providerCode === "400" &&
+      /category id is not active/i.test(error.diagnostic.providerMessage || "");
+    if (!inactiveCategory) throw error;
+    raw = [];
+  }
   const updatedAt = new Date().toISOString();
   let products = parseProducts(raw, updatedAt);
   let selection: Catalog["selection"];

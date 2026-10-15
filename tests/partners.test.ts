@@ -357,3 +357,40 @@ test("Numeric provider success codes are accepted", async (t) => {
   );
   assert.equal((await fetchCatalog()).products.length, 1);
 });
+
+test("Inactive beauty category 1009 falls back to authenticated beauty search and preserves affiliate links", async (t) => {
+  let calls = 0;
+  setup(t, async (url) => {
+    calls++;
+    const u = new URL(String(url));
+    if (u.pathname.includes("/bestcategories/"))
+      return new Response(
+        JSON.stringify({
+          rCode: "400",
+          rMessage: "category id is not active: 1009",
+        }),
+        { status: 200 },
+      );
+    assert.equal(u.pathname, path + "/products/search");
+    assert.equal(u.searchParams.get("keyword"), "뷰티");
+    assert.equal(u.searchParams.get("subId"), "testSub");
+    return ok({ productData: [item] });
+  });
+  const result = await fetchCatalog("", "beauty");
+  assert.equal(calls, 2);
+  assert.equal(result.mode, "live");
+  assert.equal(result.selection, "category_search");
+  assert.equal(result.products[0].affiliateUrl, item.productUrl);
+});
+test("Other category errors are not disguised as inactivity or retried against search", async (t) => {
+  let calls = 0;
+  setup(t, async () => {
+    calls++;
+    return new Response(
+      JSON.stringify({ rCode: "400", rMessage: "permission denied" }),
+      { status: 200 },
+    );
+  });
+  await assert.rejects(() => fetchCatalog("", "beauty"), PartnerError);
+  assert.equal(calls, 1);
+});
