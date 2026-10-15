@@ -3054,3 +3054,106 @@ svg {
     letter-spacing: 0;
   }
 }
+.category-discovery {
+  margin: 35px 0 0;
+}
+.category-discovery h2 {
+  font-size: 25px;
+  letter-spacing: -0.8px;
+  font-weight: 600;
+  margin: 0 0 9px;
+}
+.category-discovery p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #596b4c;
+  margin: 0;
+}
+.category-discovery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 19px;
+}
+.category-discovery-grid > a {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid #e1dfd4;
+  border-radius: 9px;
+  padding: 22px;
+  background: #f4e7e2;
+  transition: transform 0.2s;
+}
+.category-discovery-grid > a:hover {
+  transform: translateY(-3px);
+}
+.category-discovery-grid > a > strong {
+  font-size: 18px;
+  color: #394d32;
+}
+.category-discovery-grid > a > span {
+  font-size: 13px;
+  color: #5e6c51;
+  line-height: 1.7;
+}
+.category-discovery-grid > a > svg:last-child {
+  position: absolute;
+  right: 18px;
+  top: 22px;
+}
+.category-discovery-grid .discovery-fashion {
+  background: #eee7dc;
+}
+.category-discovery-grid .discovery-mens {
+  background: #e3e9e5;
+}
+.category-discovery-grid .discovery-sports {
+  background: #e8eddb;
+}
+.category-search-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 13px;
+  background: #eef2e5;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #506641;
+  line-height: 1.8;
+}
+.category-search-notice svg {
+  margin-top: 4px;
+}
+@media (max-width: 760px) {
+  .category-discovery h2 {
+    font-size: 23px;
+  }
+  .category-discovery p {
+    font-size: 14px;
+  }
+  .category-discovery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .category-discovery-grid > a {
+    padding: 18px 14px;
+    min-height: 150px;
+    gap: 10px;
+  }
+  .category-discovery-grid > a > strong {
+    font-size: 17px;
+  }
+  .category-discovery-grid > a > span {
+    font-size: 13px;
+  }
+  .category-discovery-grid > a > svg:last-child {
+    right: 13px;
+    top: 20px;
+  }
+  .category-search-notice {
+    font-size: 13px;
+  }
+}

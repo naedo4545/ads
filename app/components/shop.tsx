@@ -32,15 +32,17 @@ import {
   type Product,
   type Catalog,
 } from "@/lib/partners/catalog";
-const icons = [
-  LayoutGrid,
-  Monitor,
-  Armchair,
-  Coffee,
-  Sparkles,
-  Apple,
-  Footprints,
-];
+const categoryIcons: Record<string, typeof LayoutGrid> = {
+  all: LayoutGrid,
+  digital: Monitor,
+  home: Armchair,
+  kitchen: Coffee,
+  beauty: Sparkles,
+  food: Apple,
+  fashion: ShoppingBag,
+  mens: ShoppingBag,
+  sports: Footprints,
+};
 const money = (value: number) => new Intl.NumberFormat("ko-KR").format(value);
 const colors = [
   "#e7eadf",
@@ -395,6 +397,19 @@ function ProductArt({
               stroke="#c4a66a"
               strokeWidth="4"
             />
+          </g>
+        ) : name === "menswear" ? (
+          <g>
+            <path
+              d="m93 47 37 15 37-15 46 39-25 34-21-16v99H93v-99l-21 16-25-34Z"
+              fill="#a0b2ad"
+            />
+            <path d="m112 52 18 10 18-10-7 24h-23Z" fill="#dae2d8" />
+            <path d="M130 77v120" stroke="#6d8980" strokeWidth="3" />
+            <path d="M146 99h17v21h-17Z" fill="#8da49b" />
+            <circle cx="130" cy="99" r="2" fill="#e7ede2" />
+            <circle cx="130" cy="125" r="2" fill="#e7ede2" />
+            <circle cx="130" cy="151" r="2" fill="#e7ede2" />
           </g>
         ) : name === "keyboard" ? (
           <g transform="rotate(-12 130 120)">
@@ -904,6 +919,56 @@ export default function Shop({
           </>
         ) : (
           <>
+            {mode === "home" && (
+              <section
+                className="category-discovery"
+                aria-label="분야별 상품 바로가기"
+              >
+                <div>
+                  <h2>뷰티도, 패션도, 운동템도.</h2>
+                  <p>오늘의 추천에 없더라도, 원하는 분야에서 찾아보세요.</p>
+                </div>
+                <div className="category-discovery-grid">
+                  {[
+                    {
+                      id: "beauty",
+                      title: "뷰티 · 케어",
+                      copy: "매일의 관리, 새로운 발견",
+                      Icon: Sparkles,
+                    },
+                    {
+                      id: "fashion",
+                      title: "여성패션",
+                      copy: "취향대로 완성하는 스타일",
+                      Icon: ShoppingBag,
+                    },
+                    {
+                      id: "mens",
+                      title: "남성패션",
+                      copy: "일상에 더하는 새로운 한 벌",
+                      Icon: ShoppingBag,
+                    },
+                    {
+                      id: "sports",
+                      title: "스포츠 · 레저",
+                      copy: "가볍게 움직이는 하루",
+                      Icon: Footprints,
+                    },
+                  ].map((c) => (
+                    <Link
+                      key={c.id}
+                      href={"/search?category=" + c.id}
+                      className={"discovery-" + c.id}
+                    >
+                      <c.Icon size={25} />
+                      <strong>{c.title}</strong>
+                      <span>{c.copy}</span>
+                      <ArrowUpRight size={18} />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
             <section className="product-section">
               <div className="shop-section-heading">
                 <div>
@@ -938,8 +1003,8 @@ export default function Shop({
               </div>
               {mode !== "saved" && (
                 <div className="shop-categories">
-                  {categories.map((c, i) => {
-                    const Icon = icons[i];
+                  {categories.map((c) => {
+                    const Icon = categoryIcons[c.id] || LayoutGrid;
                     return (
                       <button
                         key={c.id}
@@ -972,6 +1037,12 @@ export default function Shop({
                     연결 안내 <ChevronRight size={14} />
                   </Link>
                 </div>
+              )}
+              {catalog?.selection === "category_search" && (
+                <p className="category-search-notice">
+                  <Info size={16} />
+                  카테고리 추천 목록이 없어 해당 분야의 검색 상품을 보여드려요.
+                </p>
               )}
               <div className="shop-results">
                 <span>

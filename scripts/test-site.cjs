@@ -60,6 +60,32 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
         );
       },
     );
+    await check(
+      "Beauty, womenswear, menswear and sports each have a working independent category",
+      async () => {
+        await page.goto(baseURL);
+        await waitCount(12);
+        assert.equal(
+          await page.locator(".category-discovery-grid>a").count(),
+          4,
+        );
+        for (const [category, count] of [
+          ["beauty", 2],
+          ["fashion", 1],
+          ["mens", 1],
+          ["sports", 1],
+        ]) {
+          await page.goto(baseURL + "/search?category=" + category);
+          await waitCount(count);
+          assert.equal(
+            await page.locator(".shop-categories button.active").count(),
+            1,
+          );
+        }
+        await page.goto(baseURL + "/search");
+        await waitCount(12);
+      },
+    );
     await check("Search submit, empty result and reset work", async () => {
       await page
         .getByRole("textbox", { name: "상품 검색" })

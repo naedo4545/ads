@@ -13,9 +13,10 @@ export type Catalog = {
   mode: "live" | "example";
   products: Product[];
   updatedAt: string | null;
+  selection?: "category_search";
 };
 export const categories = [
-  { id: "all", name: "전체", keyword: "" },
+  { id: "all", name: "오늘의 추천", keyword: "" },
   {
     id: "digital",
     coupangCategoryId: "1015",
@@ -48,8 +49,20 @@ export const categories = [
   },
   {
     id: "fashion",
-    coupangCategoryId: "1006",
-    name: "패션 · 스포츠",
+    coupangCategoryId: "1001",
+    name: "여성패션",
+    keyword: "여성패션",
+  },
+  {
+    id: "mens",
+    coupangCategoryId: "1002",
+    name: "남성패션",
+    keyword: "남성패션",
+  },
+  {
+    id: "sports",
+    coupangCategoryId: "1016",
+    name: "스포츠 · 레저",
     keyword: "스포츠",
   },
 ];
@@ -62,10 +75,11 @@ const exampleRows: [string, string, string, number][] = [
   ["chair", "내 공간을 바꾸는 우드 체어", "home", 79000],
   ["bottle", "가볍게 챙기는 스테인리스 텀블러", "kitchen", 21900],
   ["bag", "주말의 시작, 데일리 백팩", "fashion", 54900],
+  ["menswear", "가볍게 입는 데일리 남성 셔츠", "mens", 29900],
   ["oats", "든든한 아침 오트 그래놀라", "food", 12900],
   ["keyboard", "책상 위의 작은 변화, 무선 키보드", "digital", 69000],
   ["cream", "편안한 하루 핸드크림", "beauty", 15900],
-  ["yoga", "나를 위한 시간, 홈트 요가 매트", "fashion", 24900],
+  ["yoga", "나를 위한 시간, 홈트 요가 매트", "sports", 24900],
 ];
 export function exampleCatalog(keyword = ""): Catalog {
   const normalize = (v: string) =>

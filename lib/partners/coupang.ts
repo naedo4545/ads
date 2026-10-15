@@ -217,9 +217,19 @@ export async function fetchCatalog(
     : categoryId
       ? "/products/bestcategories/" + categoryId
       : "/products/goldbox";
-  const raw = await call(base + endpoint, params);
+  let raw = await call(base + endpoint, params);
   const updatedAt = new Date().toISOString();
-  const products = parseProducts(raw, updatedAt);
+  let products = parseProducts(raw, updatedAt);
+  let selection: Catalog["selection"];
+  if (!keyword && categoryId && products.length === 0) {
+    const searchParams = new URLSearchParams();
+    searchParams.set("keyword", selectedCategory.keyword);
+    searchParams.set("limit", "10");
+    if (subId) searchParams.set("subId", subId);
+    raw = await call(base + "/products/search", searchParams);
+    products = parseProducts(raw, updatedAt);
+    selection = "category_search";
+  }
   // Normal product URLs must first be converted using this account's deeplink API.
   const list = Array.isArray(raw)
     ? raw
@@ -279,5 +289,10 @@ export async function fetchCatalog(
       "invalid_response",
       "일부 상품의 파트너스 링크를 확인하지 못했습니다.",
     );
-  return { mode: "live", products, updatedAt };
+  return {
+    mode: "live",
+    products,
+    updatedAt,
+    ...(selection ? { selection } : {}),
+  };
 }

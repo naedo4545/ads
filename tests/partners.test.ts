@@ -203,7 +203,7 @@ test("Network failures and malformed responses fail safely", async (t) => {
 test("Examples cannot create commission-bearing links and support category search", () => {
   const result = exampleCatalog();
   assert.equal(result.mode, "example");
-  assert.equal(result.products.length, 12);
+  assert.equal(result.products.length, 13);
   assert.ok(
     result.products.every(
       (p) => p.affiliateUrl === null && p.source === "example",
@@ -271,4 +271,38 @@ test("Unsupported categories are rejected without calling the provider", async (
   });
   await assert.rejects(() => fetchCatalog("", "not-a-category"), PartnerError);
   assert.equal(calls, 0);
+});
+
+test("Beauty, womenswear, menswear and sports use separate provider categories", async (t) => {
+  for (const [category, id] of [
+    ["beauty", "1009"],
+    ["fashion", "1001"],
+    ["mens", "1002"],
+    ["sports", "1016"],
+  ]) {
+    setup(t, async (url) => {
+      assert.equal(
+        new URL(String(url)).pathname,
+        path + "/products/bestcategories/" + id,
+      );
+      return ok([item]);
+    });
+    assert.equal((await fetchCatalog("", category)).products.length, 1);
+  }
+});
+test("Empty category recommendations fall back to real category search with partner links", async (t) => {
+  let calls = 0;
+  setup(t, async (url) => {
+    calls++;
+    const u = new URL(String(url));
+    if (u.pathname.includes("/bestcategories/")) return ok([]);
+    assert.equal(u.pathname, path + "/products/search");
+    assert.equal(u.searchParams.get("keyword"), "남성패션");
+    return ok({ productData: [item] });
+  });
+  const result = await fetchCatalog("", "mens");
+  assert.equal(calls, 2);
+  assert.equal(result.mode, "live");
+  assert.equal(result.selection, "category_search");
+  assert.equal(result.products[0].affiliateUrl, item.productUrl);
 });
