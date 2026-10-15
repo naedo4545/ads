@@ -28,7 +28,7 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
       async () => {
         const r = await page.goto(baseURL);
         assert.equal(r.status(), 200);
-        await page.getByRole("heading", { name: /잘 고른 하나가/ }).waitFor();
+        await page.getByRole("heading", { name: /장바구니 넣기 전/ }).waitFor();
         await waitCount(12);
         await page.locator(".catalog-notice").waitFor();
         assert.equal(
@@ -189,12 +189,127 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
       },
     );
     await check(
+      "More products reveals 12, 24 and all 29 with category context and tracking intact",
+      async () => {
+        const many = {
+          ...fixture,
+          products: Array.from({ length: 29 }, (_, i) => ({
+            ...fixture.products[0],
+            id: String(2000 + i),
+            name: "더보기 상품 " + i,
+            price: 10000 + i,
+            affiliateUrl: "https://link.coupang.com/a/partner-" + i,
+          })),
+        };
+        let requestedCategory = "";
+        await page.route("**/api/products**", (route) => {
+          requestedCategory =
+            new URL(route.request().url()).searchParams.get("category") ||
+            "all";
+          return route.fulfill({ json: many });
+        });
+        await page.goto(baseURL + "/search");
+        await waitCount(12);
+        await page.getByRole("button", { name: /상품 더보기/ }).click();
+        await waitCount(24);
+        await page.getByRole("button", { name: /상품 더보기/ }).click();
+        await waitCount(29);
+        assert.equal(await page.locator(".load-more-button").count(), 0);
+        await page.locator(".catalog-end").waitFor();
+        await page
+          .getByRole("button", { name: "디지털 · 가전", exact: true })
+          .click();
+        await waitCount(12);
+        assert.equal(requestedCategory, "digital");
+        const href = await page
+          .locator(".product-name")
+          .first()
+          .getAttribute("href");
+        assert.match(href, /category=digital/);
+        await page.locator(".product-name").first().click();
+        await page
+          .getByRole("heading", { name: "더보기 상품 0", exact: true })
+          .waitFor();
+        assert.equal(
+          await page.locator(".buy-button").getAttribute("href"),
+          "https://link.coupang.com/a/partner-0",
+        );
+        assert.equal(
+          await page.locator(".card-ad-label").first().innerText(),
+          "광고",
+        );
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.locator(".mobile-purchase-bar").waitFor();
+        assert.equal(
+          await page.locator(".mobile-purchase-bar a").getAttribute("href"),
+          "https://link.coupang.com/a/partner-0",
+        );
+        assert.ok(
+          Number.parseFloat(
+            await page
+              .locator(".product-disclosure")
+              .evaluate((el) => getComputedStyle(el).fontSize),
+          ) >= 14,
+        );
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+          true,
+        );
+        await page.setViewportSize({ width: 1440, height: 1050 });
+        await page.unroute("**/api/products**");
+      },
+    );
+    await check(
+      "Wishlist can show more items even when the external catalog is unavailable",
+      async () => {
+        const entries = Array.from({ length: 15 }, (_, i) => ({
+          product: {
+            ...fixture.products[0],
+            id: String(3000 + i),
+            name: "찜 상품 " + i,
+          },
+          keyword: "",
+          category: "digital",
+        }));
+        await page.evaluate(
+          (entries) =>
+            localStorage.setItem("moapick-saved", JSON.stringify(entries)),
+          entries,
+        );
+        let requests = 0;
+        await page.route("**/api/products**", (route) => {
+          requests++;
+          return route.fulfill({
+            status: 503,
+            json: { error: "API unavailable" },
+          });
+        });
+        await page.goto(baseURL + "/collection");
+        await waitCount(12);
+        await page.getByRole("button", { name: /상품 더보기/ }).click();
+        await waitCount(15);
+        assert.equal(requests, 0);
+        assert.match(
+          await page.locator(".product-name").first().getAttribute("href"),
+          /category=digital/,
+        );
+        await page.evaluate(() => localStorage.removeItem("moapick-saved"));
+        await page.unroute("**/api/products**");
+      },
+    );
+    await check(
       "Public routes validate search length and protect scheduled refresh",
       async () => {
         const invalid = await context.request.get(
           baseURL + "/api/products?q=" + "a".repeat(81),
         );
         assert.equal(invalid.status(), 400);
+        const badCategory = await context.request.get(
+          baseURL + "/api/products?category=invalid",
+        );
+        assert.equal(badCategory.status(), 400);
         const cron = await context.request.get(baseURL + "/api/cron/products");
         assert.ok([401, 503].includes(cron.status()));
         const health = await context.request.get(baseURL + "/api/health");
@@ -209,6 +324,17 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(baseURL);
         await waitCount(12);
+        assert.ok(
+          await page
+            .locator(".product-name")
+            .first()
+            .evaluate((el) => parseFloat(getComputedStyle(el).fontSize) >= 16),
+        );
+        assert.ok(
+          await page
+            .locator(".shop-affiliate-disclosure p")
+            .evaluate((el) => parseFloat(getComputedStyle(el).fontSize) >= 13),
+        );
         await page.screenshot({
           path: "/tmp/moapick-mobile.png",
           fullPage: true,

@@ -1,9 +1,12 @@
 import { unstable_cache } from "next/cache";
 import { createHash } from "node:crypto";
 import { configured, fetchCatalog } from "./coupang";
-import { exampleCatalog } from "./catalog";
-export async function getCatalog(keyword = "") {
-  if (!configured()) return exampleCatalog(keyword);
+import { exampleCatalog, categories } from "./catalog";
+export async function getCatalog(keyword = "", category = "all") {
+  if (!configured())
+    return exampleCatalog(
+      keyword || categories.find((c) => c.id === category)?.keyword || "",
+    );
   // Scope cache to the partner account so a credential change cannot reuse another account's links.
   const scope = createHash("sha256")
     .update(
@@ -15,8 +18,8 @@ export async function getCatalog(keyword = "") {
     )
     .digest("hex");
   return unstable_cache(
-    () => fetchCatalog(keyword),
-    ["partner-products-v1", scope, keyword],
+    () => fetchCatalog(keyword, category),
+    ["partner-products-v2", scope, keyword, category],
     { revalidate: 3600, tags: ["partner-products"] },
   )();
 }

@@ -212,3 +212,63 @@ test("Examples cannot create commission-bearing links and support category searc
   assert.equal(exampleCatalog("디지털 가전").products.length, 3);
   assert.equal(exampleCatalog("존재하지않는상품").products.length, 0);
 });
+
+test("Category recommendations request up to 100 products and preserve every affiliate link", async (t) => {
+  setup(t, async (url) => {
+    const u = new URL(String(url));
+    assert.equal(u.pathname, path + "/products/bestcategories/1015");
+    assert.equal(u.searchParams.get("limit"), "100");
+    return ok(
+      Array.from({ length: 100 }, (_, i) => ({
+        ...item,
+        productId: 1000 + i,
+        productUrl: "https://link.coupang.com/a/partner-" + i,
+      })),
+    );
+  });
+  const result = await fetchCatalog("", "digital");
+  assert.equal(result.products.length, 100);
+  assert.equal(
+    result.products[99].affiliateUrl,
+    "https://link.coupang.com/a/partner-99",
+  );
+});
+test("One hundred ordinary product links are converted in batches of fifty with no untracked leftovers", async (t) => {
+  let batches = 0;
+  setup(t, async (url, init) => {
+    if (!String(url).includes("/deeplink"))
+      return ok(
+        Array.from({ length: 100 }, (_, i) => ({
+          ...item,
+          productId: 1000 + i,
+          productUrl: "https://www.coupang.com/vp/products/" + (1000 + i),
+        })),
+      );
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.coupangUrls.length, 50);
+    batches++;
+    return ok(
+      body.coupangUrls.map((url: string) => ({
+        originalUrl: url,
+        shortenUrl: "https://link.coupang.com/a/item-" + url.split("/").pop(),
+      })),
+    );
+  });
+  const result = await fetchCatalog("", "home");
+  assert.equal(batches, 2);
+  assert.equal(result.products.length, 100);
+  assert.equal(
+    result.products[99].affiliateUrl,
+    "https://link.coupang.com/a/item-1099",
+  );
+  assert.ok(result.products.every((p) => p.affiliateUrl));
+});
+test("Unsupported categories are rejected without calling the provider", async (t) => {
+  let calls = 0;
+  setup(t, async () => {
+    calls++;
+    return ok([]);
+  });
+  await assert.rejects(() => fetchCatalog("", "not-a-category"), PartnerError);
+  assert.equal(calls, 0);
+});

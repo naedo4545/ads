@@ -454,7 +454,18 @@ function ProductArt({
   );
 }
 
-type Saved = { product: Product; keyword: string };
+type Saved = { product: Product; keyword: string; category?: string };
+const PAGE_SIZE = 12;
+function productHref(id: string, keyword: string, category = "all") {
+  const params = new URLSearchParams();
+  if (keyword) params.set("q", keyword);
+  if (category !== "all") params.set("category", category);
+  return (
+    "/product/" +
+    encodeURIComponent(id) +
+    (params.toString() ? "?" + params.toString() : "")
+  );
+}
 export default function Shop({
   mode = "home",
   id,
@@ -468,6 +479,7 @@ export default function Shop({
   const [query, setQuery] = useState("");
   const [applied, setApplied] = useState("");
   const [category, setCategory] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sort, setSort] = useState("recommended");
   const [retry, setRetry] = useState(0);
   const [saved, setSaved] = useState<Saved[]>([]);
@@ -488,6 +500,9 @@ export default function Shop({
         );
     } catch {}
     const q = new URLSearchParams(window.location.search).get("q") || "";
+    const c =
+      new URLSearchParams(window.location.search).get("category") || "all";
+    setCategory(categories.some((v) => v.id === c) ? c : "all");
     setQuery(q);
     setApplied(q);
     setReady(true);
@@ -499,16 +514,28 @@ export default function Shop({
       } catch {}
     }
   }, [saved, ready]);
-  const requestKeyword =
-    applied || categories.find((c) => c.id === category)?.keyword || "";
+  const requestKeyword = applied;
+  useEffect(
+    () => setVisibleCount(PAGE_SIZE),
+    [requestKeyword, category, sort, mode],
+  );
   useEffect(() => {
     if (!ready) return;
+    if (mode === "saved") {
+      setLoading(false);
+      setError("");
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError("");
     fetch(
       "/api/products" +
-        (requestKeyword ? "?q=" + encodeURIComponent(requestKeyword) : ""),
+        "?" +
+        new URLSearchParams({
+          ...(requestKeyword ? { q: requestKeyword } : {}),
+          category,
+        }).toString(),
       { signal: controller.signal },
     )
       .then(async (response) => {
@@ -527,7 +554,7 @@ export default function Shop({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [ready, requestKeyword, retry]);
+  }, [ready, requestKeyword, category, retry, mode]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2200);
@@ -537,7 +564,7 @@ export default function Shop({
     setSaved((prev) =>
       prev.some((v) => v.product.id === product.id)
         ? prev.filter((v) => v.product.id !== product.id)
-        : [...prev, { product, keyword: requestKeyword }],
+        : [...prev, { product, keyword: requestKeyword, category }],
     );
     setToast(
       saved.some((v) => v.product.id === product.id)
@@ -576,11 +603,15 @@ export default function Shop({
     }
   };
   const productLink = (p: Product) =>
-    "/product/" +
-    encodeURIComponent(p.id) +
-    (requestKeyword ? "?q=" + encodeURIComponent(requestKeyword) : "");
+    productHref(p.id, requestKeyword, category);
+  const hasMobilePurchase =
+    mode === "detail" &&
+    selected?.source === "coupang" &&
+    Boolean(selected.affiliateUrl);
   return (
-    <div className="shop-shell">
+    <div
+      className={`shop-shell ${hasMobilePurchase ? "has-mobile-purchase" : ""}`}
+    >
       <div className="announcement">
         <span>좋은 선택을 더 가깝게.</span> 모아픽에서 발견하고, 쿠팡에서 편하게
         쇼핑하세요. <ArrowUpRight size={12} />
@@ -654,7 +685,7 @@ export default function Shop({
       </header>
       <main className="shop-main">
         <div className="shop-affiliate-disclosure">
-          <span>제휴 안내</span>
+          <span>광고 · 제휴 안내</span>
           <p>{disclosure}</p>
         </div>
         {mode === "home" && (
@@ -665,17 +696,17 @@ export default function Shop({
                   <span /> LITTLE FINDS, BETTER EVERYDAY
                 </span>
                 <h1>
-                  잘 고른 하나가
+                  장바구니 넣기 전,
                   <br />
-                  일상을 <em>바꾸니까.</em>
+                  <em>이 상품도 보세요.</em>
                 </h1>
                 <p>
                   매일 쓰는 것부터 갖고 싶던 것까지.
                   <br />
-                  당신의 취향에 맞는 좋은 상품을 모아봤어요.
+                  마음에 드는 상품을 더 많이, 한눈에 비교해 보세요.
                 </p>
                 <Link href="/search" className="shop-dark-button">
-                  오늘의 상품 만나기 <ArrowUpRight size={17} />
+                  눈여겨볼 상품 보기 <ArrowUpRight size={17} />
                 </Link>
                 <div className="hero-footnote">
                   <span>일상의 작은 발견</span>
@@ -769,7 +800,7 @@ export default function Shop({
                   </div>
                   <div className="detail-info">
                     <div className="shop-eyebrow">
-                      A GOOD FIND FOR YOUR EVERYDAY
+                      마음에 든다면, 가격과 조건부터 확인하세요
                     </div>
                     <span className="detail-category">
                       {categories.find((c) => c.id === selected.category)
@@ -888,7 +919,7 @@ export default function Shop({
                       ? "마음에 담아둔 상품"
                       : mode === "search"
                         ? "취향에 맞는 발견"
-                        : "오늘, 눈여겨볼 상품"}
+                        : "그냥 지나치기 아까운 발견"}
                     <span className="heading-dot" />
                   </h1>
                   <p>
@@ -896,7 +927,7 @@ export default function Shop({
                       ? "좋아하는 것들을 모아두고, 필요할 때 다시 만나보세요."
                       : mode === "search"
                         ? "필요한 것, 좋아하는 것. 당신에게 맞는 상품을 찾아보세요."
-                        : "일상을 조금 더 편하고 즐겁게 만드는 작은 발견."}
+                        : "생활을 바꿀 작은 아이템, 다음 픽은 여기서 찾아보세요."}
                   </p>
                 </div>
                 {mode === "home" && (
@@ -989,7 +1020,7 @@ export default function Shop({
                 />
               ) : products.length ? (
                 <div className="shop-product-grid">
-                  {products.map((p) => (
+                  {products.slice(0, visibleCount).map((p) => (
                     <ProductCard
                       key={p.id}
                       product={p}
@@ -997,15 +1028,13 @@ export default function Shop({
                       toggle={toggle}
                       href={
                         mode === "saved"
-                          ? "/product/" +
-                            encodeURIComponent(p.id) +
-                            (saved.find((v) => v.product.id === p.id)?.keyword
-                              ? "?q=" +
-                                encodeURIComponent(
-                                  saved.find((v) => v.product.id === p.id)!
-                                    .keyword,
-                                )
-                              : "")
+                          ? productHref(
+                              p.id,
+                              saved.find((v) => v.product.id === p.id)
+                                ?.keyword || "",
+                              saved.find((v) => v.product.id === p.id)
+                                ?.category || "all",
+                            )
                           : productLink(p)
                       }
                     />
@@ -1046,6 +1075,36 @@ export default function Shop({
                   )}
                 </div>
               )}
+              {!loading && !error && products.length > 0 && (
+                <div className="load-more-area">
+                  <p aria-live="polite">
+                    현재{" "}
+                    <strong>{Math.min(visibleCount, products.length)}</strong> /{" "}
+                    {products.length}개 상품을 보고 있어요.
+                  </p>
+                  {visibleCount < products.length ? (
+                    <button
+                      className="load-more-button"
+                      onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                    >
+                      상품 더보기{" "}
+                      <span>
+                        +{Math.min(PAGE_SIZE, products.length - visibleCount)}개
+                      </span>
+                      <ChevronDown size={19} />
+                    </button>
+                  ) : (
+                    <div className="catalog-end">
+                      <Check size={17} /> 현재 목록을 모두 확인했어요.
+                      {mode !== "saved" && (
+                        <span>
+                          다른 카테고리에서도 새로운 상품을 만나보세요.
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {mode !== "saved" && catalog?.updatedAt && (
                 <p className="catalog-freshness">
                   상품 정보 조회{" "}
@@ -1061,9 +1120,9 @@ export default function Shop({
                 <div>
                   <span className="shop-eyebrow">COLLECT YOUR FAVORITES</span>
                   <h2>
-                    좋은 발견은
+                    살까 말까 할 땐,
                     <br />
-                    두고두고 꺼내 보세요.
+                    일단 찜해두세요.
                   </h2>
                   <p>
                     눈여겨본 상품을 하트에 담아두세요.
@@ -1120,6 +1179,25 @@ export default function Shop({
           © {new Date().getFullYear()} MOAPICK. ALL RIGHTS RESERVED.
         </span>
       </footer>
+      {hasMobilePurchase && selected && (
+        <div className="mobile-purchase-bar">
+          <p>광고 · 쿠팡 파트너스 링크를 통한 구매로 수수료를 제공받습니다.</p>
+          <div>
+            <strong>
+              {money(selected.price)}
+              <small>원</small>
+            </strong>
+            <a
+              className="shop-primary"
+              href={selected.affiliateUrl!}
+              target="_blank"
+              rel="sponsored nofollow noopener noreferrer"
+            >
+              쿠팡에서 확인 <ExternalLink size={17} />
+            </a>
+          </div>
+        </div>
+      )}
       {toast && (
         <div className="shop-toast" role="status">
           <Check size={17} />
@@ -1166,6 +1244,7 @@ function ProductCard({
       </div>
       <div className="product-card-info">
         <span className="product-category">
+          {p.source === "coupang" && <b className="card-ad-label">광고</b>}
           {categories.find((c) => c.id === p.category)?.name || p.category}
         </span>
         <Link href={href} className="product-name">
@@ -1178,7 +1257,9 @@ function ProductCard({
         </div>
         <div className="product-card-bottom">
           <span>
-            {p.source === "example" ? "디자인 미리보기" : "쿠팡에서 구매 가능"}
+            {p.source === "example"
+              ? "디자인 미리보기"
+              : "가격·재고는 쿠팡에서 확인"}
           </span>
           <Link href={href}>
             상품 보기 <ArrowUpRight size={13} />

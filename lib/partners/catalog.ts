@@ -16,12 +16,42 @@ export type Catalog = {
 };
 export const categories = [
   { id: "all", name: "전체", keyword: "" },
-  { id: "digital", name: "디지털 · 가전", keyword: "디지털 가전" },
-  { id: "home", name: "홈 · 리빙", keyword: "홈 리빙" },
-  { id: "kitchen", name: "주방 · 생활", keyword: "주방 생활" },
-  { id: "beauty", name: "뷰티 · 케어", keyword: "뷰티" },
-  { id: "food", name: "식품 · 건강", keyword: "식품" },
-  { id: "fashion", name: "패션 · 스포츠", keyword: "스포츠" },
+  {
+    id: "digital",
+    coupangCategoryId: "1015",
+    name: "디지털 · 가전",
+    keyword: "디지털 가전",
+  },
+  {
+    id: "home",
+    coupangCategoryId: "1014",
+    name: "홈 · 리빙",
+    keyword: "홈 리빙",
+  },
+  {
+    id: "kitchen",
+    coupangCategoryId: "1012",
+    name: "주방 · 생활",
+    keyword: "주방 생활",
+  },
+  {
+    id: "beauty",
+    coupangCategoryId: "1009",
+    name: "뷰티 · 케어",
+    keyword: "뷰티",
+  },
+  {
+    id: "food",
+    coupangCategoryId: "1011",
+    name: "식품 · 건강",
+    keyword: "식품",
+  },
+  {
+    id: "fashion",
+    coupangCategoryId: "1006",
+    name: "패션 · 스포츠",
+    keyword: "스포츠",
+  },
 ];
 const exampleRows: [string, string, string, number][] = [
   ["headphones", "무선 노이즈 캔슬링 헤드폰", "digital", 89000],

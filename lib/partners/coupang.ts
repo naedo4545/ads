@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { z } from "zod";
-import type { Catalog, Product } from "./catalog";
+import { categories, type Catalog, type Product } from "./catalog";
 
 const origin = "https://api-gateway.coupang.com";
 const base = "/v2/providers/affiliate_open_api/apis/openapi/v1";
@@ -94,7 +94,7 @@ async function call(
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       cache: "no-store",
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(8000),
     });
   } catch {
     throw new PartnerError(
@@ -193,7 +193,10 @@ export function parseProducts(raw: unknown, updatedAt: string): Product[] {
     );
   return Array.from(unique.values());
 }
-export async function fetchCatalog(keyword = ""): Promise<Catalog> {
+export async function fetchCatalog(
+  keyword = "",
+  category = "all",
+): Promise<Catalog> {
   const params = new URLSearchParams();
   const subId = process.env.COUPANG_SUB_ID?.trim();
   if (subId) params.set("subId", subId);
@@ -201,10 +204,20 @@ export async function fetchCatalog(keyword = ""): Promise<Catalog> {
     params.set("keyword", keyword);
     params.set("limit", "10");
   }
-  const raw = await call(
-    base + (keyword ? "/products/search" : "/products/goldbox"),
-    params,
-  );
+  const selectedCategory = categories.find((c) => c.id === category);
+  if (!selectedCategory)
+    throw new PartnerError("configuration", "지원하지 않는 카테고리입니다.");
+  const categoryId =
+    "coupangCategoryId" in selectedCategory
+      ? selectedCategory.coupangCategoryId
+      : null;
+  if (!keyword && categoryId) params.set("limit", "100");
+  const endpoint = keyword
+    ? "/products/search"
+    : categoryId
+      ? "/products/bestcategories/" + categoryId
+      : "/products/goldbox";
+  const raw = await call(base + endpoint, params);
   const updatedAt = new Date().toISOString();
   const products = parseProducts(raw, updatedAt);
   // Normal product URLs must first be converted using this account's deeplink API.
@@ -222,26 +235,35 @@ export async function fetchCatalog(keyword = ""): Promise<Catalog> {
       originals.set(String(item.data.productId), item.data.productUrl);
   }
   if (originals.size) {
-    const links = await call(base + "/deeplink", new URLSearchParams(), {
-      coupangUrls: Array.from(new Set(Array.from(originals.values()))),
-      ...(subId ? { subId } : {}),
-    });
-    const parsed = z
-      .array(
-        z.object({
-          originalUrl: z.string(),
-          shortenUrl: z.string().optional(),
-          landingUrl: z.string().optional(),
-        }),
-      )
-      .safeParse(links);
-    if (!parsed.success)
-      throw new PartnerError(
-        "invalid_response",
-        "파트너스 링크를 생성하지 못했습니다.",
-      );
+    const urls = Array.from(new Set(Array.from(originals.values())));
+    const converted: {
+      originalUrl: string;
+      shortenUrl?: string;
+      landingUrl?: string;
+    }[] = [];
+    for (let index = 0; index < urls.length; index += 50) {
+      const links = await call(base + "/deeplink", new URLSearchParams(), {
+        coupangUrls: urls.slice(index, index + 50),
+        ...(subId ? { subId } : {}),
+      });
+      const parsed = z
+        .array(
+          z.object({
+            originalUrl: z.string(),
+            shortenUrl: z.string().optional(),
+            landingUrl: z.string().optional(),
+          }),
+        )
+        .safeParse(links);
+      if (!parsed.success)
+        throw new PartnerError(
+          "invalid_response",
+          "파트너스 링크를 생성하지 못했습니다.",
+        );
+      converted.push(...parsed.data);
+    }
     const mapped = new Map(
-      parsed.data.map((v) => [
+      converted.map((v) => [
         v.originalUrl,
         affiliateUrl(v.shortenUrl || "") || affiliateUrl(v.landingUrl || ""),
       ]),
