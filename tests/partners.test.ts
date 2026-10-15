@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   authorization,
+  normalizeProductImage,
   affiliateUrl,
   parseProducts,
   fetchCatalog,
@@ -393,4 +394,56 @@ test("Other category errors are not disguised as inactivity or retried against s
   });
   await assert.rejects(() => fetchCatalog("", "beauty"), PartnerError);
   assert.equal(calls, 1);
+});
+
+test("Coupang image URLs normalize HTTP and protocol-relative forms to verified HTTPS hosts", () => {
+  for (const value of [
+    "http://image6.coupangcdn.com/product.jpg",
+    "//image6.coupangcdn.com/product.jpg",
+    " https://image6.coupangcdn.com/product.jpg ",
+  ])
+    assert.equal(
+      normalizeProductImage(value),
+      "https://image6.coupangcdn.com/product.jpg",
+    );
+  for (const value of [
+    null,
+    undefined,
+    "https://evil.test/image.jpg",
+    "https://image6.coupangcdn.com.evil.test/a",
+    "https://user:secret@image6.coupangcdn.com/a",
+    "javascript:alert(1)",
+    "https://image6.coupangcdn.com:8080/a",
+  ])
+    assert.equal(normalizeProductImage(value), null);
+  assert.equal(
+    parseProducts([{ ...item, productImage: null }], "")[0].image,
+    null,
+  );
+});
+
+test("Catalog reports public image diagnostics without dropping products or affiliate links", async (t) => {
+  setup(t, async () =>
+    ok([
+      { ...item, productImage: "http://image6.coupangcdn.com/product.jpg" },
+      {
+        ...item,
+        productId: 456,
+        productImage: "https://unexpected.example/product.jpg",
+      },
+      { ...item, productId: 789, productImage: null },
+    ]),
+  );
+  const result = await fetchCatalog();
+  assert.equal(result.products.length, 3);
+  assert.equal(
+    result.products[0].image,
+    "https://image6.coupangcdn.com/product.jpg",
+  );
+  assert.equal(result.imageDiagnostics?.accepted, 1);
+  assert.equal(result.imageDiagnostics?.sourceMissing, 1);
+  assert.deepEqual(result.imageDiagnostics?.rejectedHosts, [
+    "unexpected.example",
+  ]);
+  assert.ok(result.products.every((p) => p.affiliateUrl));
 });

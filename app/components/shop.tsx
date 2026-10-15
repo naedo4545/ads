@@ -66,21 +66,27 @@ function ProductArt({
   product: Product;
   hero?: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [product.image]);
   const name = product.id.replace("sample-", "");
   if (product.image)
     return (
-      <div className="product-image">
+      <div
+        className={`product-image ${imageFailed ? "image-unavailable" : ""}`}
+      >
         <img
           src={product.image}
           alt={product.name}
+          width={480}
+          height={480}
+          decoding="async"
+          style={imageFailed ? { visibility: "hidden" } : undefined}
+          onLoad={() => setImageFailed(false)}
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={(e) => {
-            e.currentTarget.style.visibility = "hidden";
-            e.currentTarget.parentElement?.classList.add("image-unavailable");
-          }}
+          onError={() => setImageFailed(true)}
         />
-        <span className="image-error-label">상품 이미지</span>
+        <span className="image-error-label">이미지를 불러오지 못했어요</span>
       </div>
     );
   if (product.source === "coupang")

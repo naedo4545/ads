@@ -3157,3 +3157,31 @@ svg {
     font-size: 13px;
   }
 }
+.product-image {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+}
+.product-image img {
+  position: absolute;
+  inset: 20px;
+  width: calc(100% - 40px);
+  height: calc(100% - 40px);
+  object-fit: contain;
+}
+.detail-image-wrap .product-image img {
+  inset: 32px;
+  width: calc(100% - 64px);
+  height: calc(100% - 64px);
+}
+.image-unavailable .image-error-label {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #596b4d;
+  text-align: center;
+  padding: 10px;
+  background: #f5f7ef;
+  border-radius: 5px;
+  max-width: 90%;
+  z-index: 2;
+}

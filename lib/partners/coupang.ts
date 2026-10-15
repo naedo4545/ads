@@ -196,11 +196,39 @@ async function call(
     );
   return envelope.data.data;
 }
+export function normalizeProductImage(
+  value: string | null | undefined,
+): string | null {
+  if (!value?.trim()) return null;
+  try {
+    const trimmed = value.trim();
+    const url = new URL(
+      trimmed.startsWith("//") ? "https:" + trimmed : trimmed,
+    );
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password
+    )
+      return null;
+    if (
+      url.hostname !== "coupangcdn.com" &&
+      !url.hostname.endsWith(".coupangcdn.com")
+    )
+      return null;
+    if (url.port && url.port !== "443") return null;
+    url.protocol = "https:";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return null;
+  }
+}
 const itemSchema = z.object({
   productId: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
   productName: z.string().min(1),
   productPrice: z.number().nonnegative(),
-  productImage: z.string().optional(),
+  productImage: z.string().nullish(),
   productUrl: z.string().url(),
   isRocket: z.boolean().optional(),
   categoryName: z.string().optional(),
@@ -221,16 +249,7 @@ export function parseProducts(raw: unknown, updatedAt: string): Product[] {
     const parsed = itemSchema.safeParse(value);
     if (!parsed.success) continue;
     const item = parsed.data;
-    let image: string | null = null;
-    try {
-      const u = new URL(item.productImage || "");
-      if (
-        u.protocol === "https:" &&
-        (u.hostname === "coupangcdn.com" ||
-          u.hostname.endsWith(".coupangcdn.com"))
-      )
-        image = u.href;
-    } catch {}
+    const image = normalizeProductImage(item.productImage);
     const id = String(item.productId);
     unique.set(id, {
       id,
@@ -360,9 +379,42 @@ export async function fetchCatalog(
       "invalid_response",
       "일부 상품의 파트너스 링크를 확인하지 못했습니다.",
     );
+  const rejectedHosts = new Set<string>();
+  const sourceFields = new Set<string>();
+  let sourceMissing = 0;
+  let invalidUrls = 0;
+  for (const value of list) {
+    if (!value || typeof value !== "object") continue;
+    const entry = value as Record<string, unknown>;
+    Object.keys(entry)
+      .filter((key) => /image|thumbnail|picture/i.test(key))
+      .slice(0, 8)
+      .forEach((key) => sourceFields.add(key));
+    const candidate = entry.productImage;
+    if (typeof candidate !== "string" || !candidate.trim()) {
+      sourceMissing++;
+      continue;
+    }
+    if (normalizeProductImage(candidate)) continue;
+    try {
+      const text = candidate.trim();
+      const url = new URL(text.startsWith("//") ? "https:" + text : text);
+      rejectedHosts.add(url.hostname);
+    } catch {
+      invalidUrls++;
+    }
+  }
+  const imageDiagnostics = {
+    accepted: products.filter((p) => Boolean(p.image)).length,
+    sourceMissing,
+    rejectedHosts: Array.from(rejectedHosts),
+    invalidUrls,
+    sourceFields: Array.from(sourceFields),
+  };
   return {
     mode: "live",
     products,
+    imageDiagnostics,
     updatedAt,
     ...(selection ? { selection } : {}),
   };

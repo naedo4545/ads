@@ -14,6 +14,13 @@ export type Catalog = {
   products: Product[];
   updatedAt: string | null;
   selection?: "category_search";
+  imageDiagnostics?: {
+    accepted: number;
+    sourceMissing: number;
+    rejectedHosts: string[];
+    invalidUrls: number;
+    sourceFields: string[];
+  };
 };
 export const categories = [
   { id: "all", name: "오늘의 추천", keyword: "" },

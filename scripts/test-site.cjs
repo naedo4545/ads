@@ -190,6 +190,73 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
       },
     );
     await check(
+      "Live product images load with visible dimensions and have an explicit failure fallback",
+      async () => {
+        const imageFixture = {
+          ...fixture,
+          products: [
+            {
+              ...fixture.products[0],
+              image: "https://image6.coupangcdn.com/browser-test.svg",
+            },
+          ],
+        };
+        let failImage = false;
+        await page.route("https://image6.coupangcdn.com/**", (route) =>
+          failImage
+            ? route.abort()
+            : route.fulfill({
+                contentType: "image/svg+xml",
+                body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320"><rect width="320" height="320" fill="#aec4a3"/></svg>',
+              }),
+        );
+        await page.route("**/api/products**", (route) =>
+          route.fulfill({ json: imageFixture }),
+        );
+        await page.goto(baseURL + "/search");
+        await waitCount(1);
+        await page.waitForFunction(() => {
+          const img = document.querySelector(".product-card img");
+          return img && img.complete && img.naturalWidth === 320;
+        });
+        assert.ok(
+          await page
+            .locator(".product-card img")
+            .evaluate(
+              (el) =>
+                el.getBoundingClientRect().width > 100 &&
+                el.getBoundingClientRect().height > 100 &&
+                getComputedStyle(el).visibility === "visible",
+            ),
+        );
+        await page.locator(".product-name").click();
+        await page.waitForFunction(() => {
+          const img = document.querySelector(".detail-image-wrap img");
+          return img && img.complete && img.naturalWidth === 320;
+        });
+        failImage = true;
+        await page.reload();
+        await page.locator(".detail-image-wrap .image-unavailable").waitFor();
+        assert.match(
+          await page.locator(".image-error-label").first().innerText(),
+          /이미지를 불러오지 못했어요/,
+        );
+        failImage = false;
+        await page.reload();
+        await page.waitForFunction(() => {
+          const img = document.querySelector(".detail-image-wrap img");
+          return (
+            img &&
+            img.complete &&
+            img.naturalWidth === 320 &&
+            getComputedStyle(img).visibility === "visible"
+          );
+        });
+        await page.unroute("**/api/products**");
+        await page.unroute("https://image6.coupangcdn.com/**");
+      },
+    );
+    await check(
       "Live API failures show an error, do not fall back silently, and can retry",
       async () => {
         let failing = true;
