@@ -1,45 +1,22 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-
+import { NextResponse } from "next/server";
+import { getCatalog } from "@/lib/partners/service";
+export const dynamic = "force-dynamic";
 export async function GET() {
   try {
-    // 데이터베이스 연결 확인
-    const { data, error } = await supabase
-      .from('ads')
-      .select('count')
-      .limit(1);
-
-    if (error) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          message: 'Database connection failed',
-          error: error.message,
-        },
-        { status: 500 }
-      );
-    }
-
-    // 시스템 상태 확인
-    const health = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
+    const catalog = await getCatalog();
+    return NextResponse.json({
+      status: catalog.mode === "live" ? "healthy" : "example",
       services: {
-        database: 'connected',
-        api: 'running',
+        catalog: "available",
+        affiliateLinks: catalog.mode === "live" ? "verified" : "not_configured",
       },
-      version: process.env.npm_package_version || '1.0.0',
-    };
-
-    return NextResponse.json(health);
-  } catch (error) {
+      products: catalog.products.length,
+      updatedAt: catalog.updatedAt,
+    });
+  } catch {
     return NextResponse.json(
-      {
-        status: 'error',
-        message: 'Health check failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
+      { status: "error", message: "파트너스 상품 연결을 확인해 주세요." },
+      { status: 503 },
     );
   }
 }

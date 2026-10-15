@@ -1,11 +1,13 @@
-export const metadata = {
-  title: "adlib. — 다음 아이디어를 발견하세요",
-  description:
-    "좋은 광고를 발견하고, 마음에 드는 크리에이티브를 모으는 나만의 광고 아카이브. 브랜드와 카테고리별 영감을 만나보세요.",
-};
-
+import type { Metadata } from "next";
 import "./globals.css";
-
+export const metadata: Metadata = {
+  title: {
+    default: "모아픽 — 잘 고른 하나가 일상을 바꾸니까",
+    template: "%s | 모아픽",
+  },
+  description:
+    "쿠팡 파트너스 상품을 모아 소개하는 취향 쇼핑 공간. 상품을 발견하고 찜하고, 쿠팡에서 편하게 쇼핑하세요.",
+};
 export default function RootLayout({
   children,
 }: {
@@ -13,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="antialiased">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,4 +1,4 @@
-import Archive from "./components/archive";
+import Shop from "./components/shop";
 export default function HomePage() {
-  return <Archive />;
+  return <Shop />;
 }

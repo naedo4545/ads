@@ -1,4 +1,4 @@
-import Archive from "../../components/archive";
-export default function DetailPage({ params }: { params: { id: string } }) {
-  return <Archive mode="detail" id={params.id} />;
+import { redirect } from "next/navigation";
+export default function LegacyDetailPage() {
+  redirect("/search");
 }

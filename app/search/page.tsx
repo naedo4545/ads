@@ -1,4 +1,4 @@
-import Archive from "../components/archive";
+import Shop from "../components/shop";
 export default function SearchPage() {
-  return <Archive mode="search" />;
+  return <Shop mode="search" />;
 }
