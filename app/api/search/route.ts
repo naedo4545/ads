@@ -73,7 +73,7 @@ async function performSearch(
       .select(`
         *,
         advertiser:advertisers(*)
-      `);
+      `, { count: 'exact' });
 
     // 기본 필터 적용
     if (filters.platform) {
@@ -134,11 +134,7 @@ async function performSearch(
       // 필터만 적용된 경우
       const { data, count } = await query
         .order(sortOption.field, { ascending: sortOption.direction === 'asc' })
-        .range((page - 1) * limit, page * limit - 1)
-        .select(`
-          *,
-          advertiser:advertisers(*)
-        `, { count: 'exact' });
+        .range((page - 1) * limit, page * limit - 1);
 
       const results: SearchResult[] = (data || []).map(ad => ({
         ad,

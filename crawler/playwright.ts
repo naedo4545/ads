@@ -70,7 +70,7 @@ class AdsTransparencyCrawler {
         await page.waitForLoadState('networkidle');
         
         // 실제 Google Ads Transparency Center의 셀렉터들 시도
-        let adElements = [];
+        let adElements: Awaited<ReturnType<Page['$$']>> = [];
         
         // 다양한 가능한 셀렉터들 시도
         const possibleSelectors = [
@@ -152,7 +152,7 @@ class AdsTransparencyCrawler {
     return ads;
   }
 
-  private async extractAdData(adElement: any): Promise<Ad | null> {
+  private async extractAdData(adElement: Awaited<ReturnType<Page['$$']>>[number]): Promise<Ad | null> {
     try {
       // 다양한 셀렉터로 광고 제목 찾기
       const titleSelectors = [

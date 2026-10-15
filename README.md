@@ -71,3 +71,44 @@ ads-transparency-mvp/
 ## 라이선스
 
 MIT License
+
+## adlib 사이트
+
+웹 화면은 외부 DB 없이 사용할 수 있는 예시 크리에이티브 아카이브입니다.
+직접 제작한 가상 브랜드 광고 8개를 제공하며, 실제 수집 광고로 표시하지 않습니다.
+
+- `/`: 발견하기, 브랜드·키워드 검색, 카테고리·플랫폼 필터, 정렬
+- `/search`: 광고 탐색 (`?q=morrow`와 같은 검색 링크 지원)
+- `/detail/stride`: 광고 상세, 북마크 저장
+- `/collection`: 이 브라우저에 저장한 개인 컬렉션
+
+컬렉션은 브라우저 localStorage에 저장됩니다. 로그인·기기 간 동기화는 제공하지 않습니다.
+기존 Supabase API와 수집/AI 워커는 별도이며, 해당 서비스에는 유효한 DB 연결과 자격 증명이 필요합니다.
+
+### 클라우드 개발 실행
+
+```bash
+cd /workspace/ads
+npm ci --cache /workspace/.npm --no-audit --no-fund
+NODE_USE_ENV_PROXY=1 npm run dev -- --hostname 0.0.0.0
+```
+
+### 프로덕션 실행
+
+```bash
+NODE_USE_ENV_PROXY=1 npm run build
+mkdir -p .next/standalone/.next/static
+cp -R .next/static/. .next/standalone/.next/static/
+HOSTNAME=0.0.0.0 PORT=3100 NODE_USE_ENV_PROXY=1 node .next/standalone/server.js
+```
+
+### 화면 기능 검증
+
+프로덕션 서버 실행 후 시스템 Chromium이 있는 환경에서 실행합니다.
+
+```bash
+SITE_TEST_URL=http://127.0.0.1:3100 CHROMIUM_PATH=/usr/bin/chromium node scripts/test-site.cjs
+```
+
+홈 화면, 검색·필터·정렬, 저장과 유지·삭제, 상세와 잘못된 ID 처리, 검색 단축키,
+모바일 메뉴와 가로 넘침, 브라우저 실행 오류를 검사합니다.

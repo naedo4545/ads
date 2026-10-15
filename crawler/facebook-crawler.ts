@@ -78,7 +78,7 @@ class FacebookAdLibraryCrawler {
           '.x1yztbdb' // Facebook의 일반적인 광고 클래스
         ];
         
-        let adElements = [];
+        let adElements: Awaited<ReturnType<Page['$$']>> = [];
         for (const selector of adSelectors) {
           try {
             await page.waitForSelector(selector, { timeout: 5000 });
@@ -145,7 +145,7 @@ class FacebookAdLibraryCrawler {
     return ads;
   }
 
-  private async extractAdData(adElement: any): Promise<Ad | null> {
+  private async extractAdData(adElement: Awaited<ReturnType<Page['$$']>>[number]): Promise<Ad | null> {
     try {
       // Facebook 광고 데이터 추출
       const titleSelectors = [
