@@ -447,3 +447,36 @@ test("Catalog reports public image diagnostics without dropping products or affi
   ]);
   assert.ok(result.products.every((p) => p.affiliateUrl));
 });
+
+test("Actual Partners image host is accepted without losing its query or affiliate attribution", async (t) => {
+  const image =
+    "https://ads-partners.coupang.com/image1/test.jpg?trackingId=sample&signature=abc%2Fdef";
+  assert.equal(normalizeProductImage(image), image);
+  assert.equal(
+    normalizeProductImage(
+      "https://ads-partners.coupang.com.evil.test/image.jpg",
+    ),
+    null,
+  );
+  assert.equal(
+    normalizeProductImage("https://other.coupang.com/image.jpg"),
+    null,
+  );
+  setup(t, async () =>
+    ok(
+      Array.from({ length: 10 }, (_, i) => ({
+        ...item,
+        productId: 1000 + i,
+        productImage: image,
+      })),
+    ),
+  );
+  const result = await fetchCatalog();
+  assert.equal(result.imageDiagnostics?.accepted, 10);
+  assert.deepEqual(result.imageDiagnostics?.rejectedHosts, []);
+  assert.ok(
+    result.products.every(
+      (p) => p.image === image && p.affiliateUrl === item.productUrl,
+    ),
+  );
+});

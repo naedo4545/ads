@@ -87,3 +87,5 @@ SITE_TEST_URL=http://127.0.0.1:3100 CHROMIUM_PATH=/usr/bin/chromium node scripts
 실제 API 확인: 뷰티 카테고리 1009는 공급처에서 `400 / category id is not active`를 반환했습니다. 이 특정 오류 또는 빈 추천 목록에 한해 공식 검색 API로 전환합니다. 인증·한도 등 다른 오류는 숨기지 않습니다.
 
 상품 이미지는 쿠팡 CDN의 HTTP·프로토콜 생략 주소를 HTTPS로 정규화합니다. 캐시를 갱신하며, 조회 응답의 imageDiagnostics는 실제 이미지 수, 원본 누락 수, 제외된 호스트와 이미지 필드 이름을 제공합니다. 전체 원본 응답이나 API 키를 노출하지 않습니다.
+
+실제 API 이미지 호스트 `ads-partners.coupang.com`도 정확한 호스트 일치로 허용합니다. 이미지 조회용 쿼리 문자열은 그대로 유지하며, 유사 도메인이나 임의 coupang.com 하위 도메인으로 허용 범위를 넓히지 않습니다.

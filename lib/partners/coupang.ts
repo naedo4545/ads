@@ -212,6 +212,7 @@ export function normalizeProductImage(
     )
       return null;
     if (
+      url.hostname !== "ads-partners.coupang.com" &&
       url.hostname !== "coupangcdn.com" &&
       !url.hostname.endsWith(".coupangcdn.com")
     )

@@ -197,12 +197,12 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
           products: [
             {
               ...fixture.products[0],
-              image: "https://image6.coupangcdn.com/browser-test.svg",
+              image: "https://ads-partners.coupang.com/browser-test.svg",
             },
           ],
         };
         let failImage = false;
-        await page.route("https://image6.coupangcdn.com/**", (route) =>
+        await page.route("https://ads-partners.coupang.com/**", (route) =>
           failImage
             ? route.abort()
             : route.fulfill({
@@ -253,7 +253,7 @@ const baseURL = process.env.SITE_TEST_URL || "http://127.0.0.1:3100";
           );
         });
         await page.unroute("**/api/products**");
-        await page.unroute("https://image6.coupangcdn.com/**");
+        await page.unroute("https://ads-partners.coupang.com/**");
       },
     );
     await check(

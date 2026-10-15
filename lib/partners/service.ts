@@ -19,7 +19,7 @@ export async function getCatalog(keyword = "", category = "all") {
     .digest("hex");
   return unstable_cache(
     () => fetchCatalog(keyword, category),
-    ["partner-products-v5", scope, keyword, category],
+    ["partner-products-v6", scope, keyword, category],
     { revalidate: 3600, tags: ["partner-products"] },
   )();
 }
